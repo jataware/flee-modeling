@@ -1,0 +1,34 @@
+/home/clouseau pip install flee
+/home/clouseau git clone https://github.com/djgroen/displacement-scenario-builder
+/home/clouseau git clone https://github.com/cspgdds/Visualflee
+/home/clouseau git clone https://github.com/mjpuma/Flee_scenarios
+/home/clouseau cd Flee_scenarios/ethiopia/
+/home/clouseau/Flee_scenarios/ethiopia ls
+/home/clouseau/Flee_scenarios/ethiopia edit input_csv/conflict_period.csv
+/home/clouseau/Flee_scenarios/ethiopia ls
+/home/clouseau/Flee_scenarios/ethiopia bash run_pflee.sh
+/home/clouseau/Flee_scenarios/ethiopia edit input_csv/locations.csv
+/home/clouseau/Flee_scenarios/ethiopia edit ../mali/input_csv/locations.csv
+/home/clouseau/Flee_scenarios/ethiopia edit ../ssudan/input_csv/locations.csv
+/home/clouseau/Flee_scenarios/ethiopia edit flee_post_process.py
+/home/clouseau/Flee_scenarios/ethiopia bash run_pflee.sh
+/home/clouseau/Flee_scenarios/ethiopia edit flee_post_process.py
+/home/clouseau/Flee_scenarios/ethiopia edit input_csv/locations.csv
+/home/clouseau/Flee_scenarios/ethiopia edit input_csv/conflict_period.csv
+/home/clouseau/Flee_scenarios/ethiopia sudo apt install screen
+/home/clouseau/Flee_scenarios/ethiopia screen -S flee_ethiopia_par
+/home/clouseau/Flee_scenarios/ethiopia bash run_pflee.sh
+/home/clouseau/Flee_scenarios/ethiopia config simsettings.csv
+/home/clouseau/Flee_scenarios/ethiopia ls
+/home/clouseau/Flee_scenarios/ethiopia config simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia edit simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia edit ../mali/simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia edit ../car/simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia edit simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia config simsetting.csv
+/home/clouseau/Flee_scenarios/ethiopia config input_csv/conflict_period.csv
+/home/clouseau/Flee_scenarios/ethiopia tag Flee_scenarios/ethiopia/output/camp_data.csv
+/home/clouseau/Flee_scenarios/ethiopia ls
+/home/clouseau/Flee_scenarios/ethiopia cd output/
+/home/clouseau/Flee_scenarios/ethiopia/output ls
+/home/clouseau/Flee_scenarios/ethiopia/output tag camp_data.csv

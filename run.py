@@ -20,7 +20,7 @@ ndays = [d for d in csv.reader(open(date_file))][-1][-1]
 
 print('Running the Flee agent based model')
 
-cores=4
+cores=2
 #ndays=146
 
 #if [ ! -z "$1" ]; then
