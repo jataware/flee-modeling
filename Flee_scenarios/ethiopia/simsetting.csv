@@ -1,0 +1,7 @@
+MaxMoveSpeed,40
+AwarenessLevel,1
+DefaultMoveChance,0.01
+PopulationScaledownFactor,100
+MaxWalkSpeed,42
+CampMoveChance,0.001
+ConflictMoveChance,1

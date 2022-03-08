@@ -1,0 +1,6 @@
+MaxMoveSpeed,360
+MaxWalkSpeed,42
+CampMoveChance,0.001
+ConflictMoveChance,1
+DefaultMoveChance,0.3
+AwarenessLevel,1

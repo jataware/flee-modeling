@@ -1,0 +1,15 @@
+"#name","region","country","latitude","longitude","location_type","conflict_date","population"
+"East1","East","CountryA",14.2778,39.4611,"conflict_zone",0,86100
+"East2","East","CountryA",14.122015,38.7305334,"conflict_zone",2,66818
+"East3","East","CountryA",13.5662655,36.9730465,"town",,407560
+"West1","West","CountryA",14.2652,36.585,"conflict_zone",5,32600
+"West2","West","CountryA",14.0747,36.5685,"town",,19300
+"West3","West","CountryA",14.4,37.9333,"town",,26893
+"South1","South","CountryA",12.7875,39.5422,"conflict_zone",11,35067
+"South2","South","CountryA",13.5,39.4667,"conflict_zone",16,500000
+"South3","South","CountryA",14.1014,38.2828,"town",,74503
+"North1","North","CountryA",14.18722,39.56389,"conflict_zone",18,10000
+"North2","North","CountryA",13.786854,39.602968,"town",,45214
+"North3","North","CountryA",13.9797481,39.4308798,"town",,134856
+"Camp1","RegionA","CountryB",15.7458,34.25498,"camp",,
+"Camp2","RegionB","CountryB",16.78541,37.515,"camp",,
