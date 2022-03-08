@@ -1,43 +1,59 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+import argparse
 import csv
 import pandas as pd
-import numpy as np
 import os
 import subprocess
-import sys
 
+
+# Pandas config
 pd.options.mode.chained_assignment = None
 
-scenario = 'ssudan'
+
+description = """
+This tool helps run the flee models for the provided scenarios.
+"""
+
+arg_parser = argparse.ArgumentParser(
+        description=description,
+        formatter_class=argparse.RawDescriptionHelpFormatter
+)
+
+arg_parser.add_argument(
+    "scenario",
+    type=str,
+    help="Predefined scenario to run",
+)
+arg_parser.add_argument(
+    "--cores",
+    type=int,
+    help="Number of cores to use when running.",
+    default=2,
+)
+
+args = arg_parser.parse_args()
+
+scenario = args.scenario
+cores = str(args.cores)
 
 dir_data = f'./Flee_scenarios/{scenario}/'
-date_file=f"{dir_data}input_csv/conflict_period.csv"
+date_file = f"{dir_data}input_csv/conflict_period.csv"
 ndays = [d for d in csv.reader(open(date_file))][-1][-1]
-#print(ndays)
-#sys.exit(0)
 
 print('Running the Flee agent based model')
-
-cores=2
-#ndays=146
-
-#if [ ! -z "$1" ]; then
-	#cores=$1
-#fi
-
 print(f"Running P-FLEE with cores = {cores}")
 
-#set number of simulation days
-date_file=f"{dir_data}input_csv/conflict_period.csv"
-#read -d $'\x04' arr < "$date_file"
-#myarray=(`echo $arr | tr ',' ' '`)
-#ndays=${myarray[-1]}
+# Fetch number of simulation days from conflict period file
+date_file = f"{dir_data}input_csv/conflict_period.csv"
 
 # Run the Flee ABM
-#amb_cmd = ["mpirun", "-np", str(cores), "python3", "run_par.py", "input_csv", "source_data", str(ndays), f"{dir_data}simsetting.csv"]
-amb_cmd = f"mpirun -np {cores} python3 run_par.py {dir_data}input_csv {dir_data}source_data {ndays} {dir_data}simsetting.csv"
+amb_cmd = (
+        f"mpirun -np {cores} python3 run_par.py {dir_data}input_csv "
+        f"{dir_data}source_data {ndays} {dir_data}simsetting.csv"
+)
+
 print(amb_cmd)
 with open(f"{dir_data}out.csv", "wb") as outfile:
     subprocess.run(amb_cmd, stdout=outfile, shell=True)
@@ -54,19 +70,29 @@ date_file = (dir_data + 'input_csv/conflict_period.csv')
 # Add dates to the output file
 with open(date_file, "r") as period_file:
     # read file as csv file
-    periodinfo = pd.read_csv(period_file,header=None)
-    datelist = pd.date_range(start=periodinfo.iloc[0,1], periods=int(periodinfo.iloc[1,1]), freq='D')
+    periodinfo = pd.read_csv(period_file, header=None)
+    datelist = pd.date_range(
+            start=periodinfo.iloc[0, 1],
+            periods=int(periodinfo.iloc[1, 1]),
+            freq='D'
+    )
 
 with open(csv_file, "r") as my_input_file:
     out_df = pd.read_csv(my_input_file)
     print(out_df)
     out_df.insert(1, "Date", datelist, True)
 
-out_df.to_csv(dir_data+'outdate.csv', index = False)
+out_df.to_csv(dir_data + 'outdate.csv', index=False)
 
 # Restructure output data
-features = [i for i in out_df.columns if 'sim' in i or 'error' in i or 'data' in i]
-features = [i for i in features if 'total' not in i.lower() and 'refugees' not in i]
+features = [
+        i for i in out_df.columns
+        if ('sim' in i or 'error' in i or 'data' in i)
+        and ('total' not in i.lower() and 'refugees' not in i)
+]
+# features = [
+#     i for i in features if 'total' not in i.lower() and 'refugees' not in i
+# ]
 
 camps = set([i.split(' ')[0] for i in features])
 
@@ -74,7 +100,7 @@ count = 0
 for camp in camps:
     cols = ['Date']
     camp_feats = [i for i in features if camp in i]
-    #camp_feats = [i for i in features if camp == i.split('_')[0]]
+    # camp_feats = [i for i in features if camp == i.split('_')[0]]
     cols.extend(camp_feats)
     df_ = out_df[cols]
     df_['camp'] = camp
