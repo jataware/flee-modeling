@@ -1,4 +1,4 @@
-#"name","region","country","lat","lon","location_type","conflict_date","population"
+#"name","region","country","latitude","longitude","location_type","conflict_date","population"
 "Bangui","Bangui","CAR",4.36122,18.55496,"conflict_zone",0,334350
 "Bimbo","Ombella_M'Poko","CAR",4.25671,18.41583,"conflict_zone",31,267859
 "Mbaiki","Lobaye","CAR",3.86781,17.98923,"town",0,
