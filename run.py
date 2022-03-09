@@ -3,10 +3,34 @@
 
 import argparse
 import csv
-import pandas as pd
 import os
+
+import pandas as pd
 import subprocess
 
+
+def update_csv_conf(dict_file_path: str, new_values: dict):
+    data = []
+    with open(dict_file_path) as input:
+        reader = csv.reader(input)
+        for name, value in reader:
+            data.append([name, new_values.get(name, value)])
+    with open(dict_file_path, 'w') as output:
+        writer = csv.writer(output, dialect="unix")
+        writer.writerows(data)
+
+
+def csv_config_to_dict(dict_file_path: str) -> dict:
+    reader = csv.reader(open(dict_file_path))
+    result = dict(reader)
+    return result
+
+
+# Get list of defined scenarios
+scenarios = [
+    entry.name for entry in os.scandir(path="./Flee_scenarios")
+    if entry.is_dir() and not entry.name.startswith('.')
+]
 
 # Pandas config
 pd.options.mode.chained_assignment = None
@@ -24,6 +48,7 @@ arg_parser = argparse.ArgumentParser(
 arg_parser.add_argument(
     "scenario",
     type=str,
+    choices=scenarios,
     help="Predefined scenario to run",
 )
 arg_parser.add_argument(
@@ -32,57 +57,103 @@ arg_parser.add_argument(
     help="Number of cores to use when running.",
     default=2,
 )
+arg_parser.add_argument(
+    "--ndays",
+    type=int,
+    help="Number of days to simulate.",
+    default=None,
+)
+arg_parser.add_argument(
+    "--MaxMoveSpeed",
+    type=int,
+    help="",
+    default=None,
+)
+arg_parser.add_argument(
+    "--CampMoveChance",
+    type=float,
+    help="Chance for a camp to move. (0-1)",
+    default=None,
+)
+arg_parser.add_argument(
+    "--ConflictMoveChance",
+    type=float,
+    help="",
+    default=None,
+)
+arg_parser.add_argument(
+    "--DefaultMoveChance",
+    type=float,
+    help="",
+    default=None,
+)
+arg_parser.add_argument(
+    "--MaxWalkSpeed",
+    type=int,
+    help="",
+    default=None,
+)
+
 
 args = arg_parser.parse_args()
+
+rundir = "./run/"
+if not os.path.isdir(rundir):
+    os.mkdir(rundir)
 
 scenario = args.scenario
 cores = str(args.cores)
 
-dir_data = f'./Flee_scenarios/{scenario}/'
-date_file = f"{dir_data}input_csv/conflict_period.csv"
-ndays = [d for d in csv.reader(open(date_file))][-1][-1]
+dir_data = os.path.join('./Flee_scenarios', scenario)
+conflict_period_file = os.path.join(dir_data, "input_csv", "conflict_period.csv")
+simsetting_file = os.path.join(dir_data, "simsetting.csv")
+
+
+# Update config files for use in Flee and pull configuration to a dictionary for use in this script
+if args.ndays is not None:
+    update_csv_conf(conflict_period_file, {"Length": args.ndays})
+update_csv_conf(simsetting_file, {
+    name: getattr(args, name)
+    for name in ('CampMoveChance', 'ConflictMoveChance', 'DefaultMoveChance', 'MaxMoveSpeed', 'MaxWalkSpeed')
+    if getattr(args, name) is not None
+})
+conflict_period = csv_config_to_dict(conflict_period_file)
+simsetting = csv_config_to_dict(simsetting_file)
+ndays = int(conflict_period.get('Length'))
 
 print('Running the Flee agent based model')
 print(f"Running P-FLEE with cores = {cores}")
 
-# Fetch number of simulation days from conflict period file
-date_file = f"{dir_data}input_csv/conflict_period.csv"
-
 # Run the Flee ABM
 amb_cmd = (
-        f"mpirun -np {cores} python3 run_par.py {dir_data}input_csv "
-        f"{dir_data}source_data {ndays} {dir_data}simsetting.csv"
+        f"mpirun -np {cores} python3 run_par.py {os.path.join(dir_data, 'input_csv')} "
+        f"{os.path.join(dir_data, 'source_data')} {ndays} {os.path.join(dir_data, 'simsetting.csv')}"
 )
 
 print(amb_cmd)
-with open(f"{dir_data}out.csv", "wb") as outfile:
+with open(f"{rundir}out.csv", "wb") as outfile:
     subprocess.run(amb_cmd, stdout=outfile, shell=True)
 
 # specify directories
-if not os.path.isdir(dir_data+'output'):
-    os.mkdir(dir_data+'output')
-if not os.path.isdir(dir_data+'media'):
-    os.mkdir(dir_data+'media')
+if not os.path.isdir(rundir + 'output'):
+    os.mkdir(rundir + 'output')
+if not os.path.isdir(rundir + 'media'):
+    os.mkdir(rundir + 'media')
 
-csv_file = (dir_data + 'out.csv')
-date_file = (dir_data + 'input_csv/conflict_period.csv')
+csv_file = (rundir + 'out.csv')
 
-# Add dates to the output file
-with open(date_file, "r") as period_file:
-    # read file as csv file
-    periodinfo = pd.read_csv(period_file, header=None)
-    datelist = pd.date_range(
-            start=periodinfo.iloc[0, 1],
-            periods=int(periodinfo.iloc[1, 1]),
-            freq='D'
-    )
+datelist = pd.date_range(
+        start=conflict_period.get("StartDate"),
+        periods=ndays,
+        freq='D'
+)
 
 with open(csv_file, "r") as my_input_file:
     out_df = pd.read_csv(my_input_file)
     print(out_df)
     out_df.insert(1, "Date", datelist, True)
 
-out_df.to_csv(dir_data + 'outdate.csv', index=False)
+out_df.to_csv(rundir + 'outdate.csv', index=False)
 
 # Restructure output data
 features = [
@@ -90,9 +161,6 @@ features = [
         if ('sim' in i or 'error' in i or 'data' in i)
         and ('total' not in i.lower() and 'refugees' not in i)
 ]
-# features = [
-#     i for i in features if 'total' not in i.lower() and 'refugees' not in i
-# ]
 
 camps = set([i.split(' ')[0] for i in features])
 
@@ -120,7 +188,7 @@ for camp in camps:
     count += 1
 
 # Add latitude and longitude of camps to output data
-locations_file = (dir_data + 'input_csv/locations.csv')
+locations_file = os.path.join(dir_data, 'input_csv/locations.csv')
 locations_df = pd.read_csv(locations_file, index_col=0)
 
 # declare an empty list to store
@@ -130,16 +198,16 @@ latitude = []
 
 print(locations_df)
 for i in (combined["camp"]):
-    latitude.append(locations_df.loc[i,"latitude"])
-    longitude.append(locations_df.loc[i,"longitude"])
+    latitude.append(locations_df.loc[i, "latitude"])
+    longitude.append(locations_df.loc[i, "longitude"])
 
 # now add this column to dataframe
 combined["Longitude"] = longitude
 combined["Latitude"] = latitude
 
 # Save output to files: one for camp values, one for totals (i.e. global)
-combined.to_csv(dir_data+ 'output/camp_data.csv',index=False)
+combined.to_csv(rundir + 'output/camp_data.csv', index=False)
 
 other_cols = set(out_df.columns) - set(features)
 
-out_df[other_cols].to_csv(dir_data+ 'output/global_data.csv', index=False)
+out_df[other_cols].to_csv(rundir + 'output/global_data.csv', index=False)
