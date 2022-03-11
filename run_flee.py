@@ -115,8 +115,8 @@ args = arg_parser.parse_args()
 print(args)
 
 rundir = "./run/"
-if not os.path.isdir(rundir):
-    os.mkdir(rundir)
+if os.path.exists(rundir):
+    shutil.rmtree(rundir)
 
 scenario = args.scenario
 cores = str(args.cores)
@@ -133,8 +133,15 @@ simsetting_file = os.path.join(run_dir_data_path, "simsetting.csv")
 
 
 # Update config files for use in Flee and pull configuration to a dictionary for use in this script
-if args.ndays is not None:
-    update_csv_conf(conflict_period_file, {"Length": args.ndays})
+# Since conflicts cannot extend beyond the scenario, we clamp the number of days to be no more than
+# the scenario default
+conflict_period = csv_config_to_dict(conflict_period_file)
+if args.ndays is not None and args.ndays <= int(conflict_period.get("Length", args.ndays)):
+    ndays = args.ndays
+    conflict_period["Length"] = ndays
+    update_csv_conf(conflict_period_file, {"Length": ndays})
+else:
+    ndays = int(conflict_period.get("Length"))
 update_csv_conf(
     simsetting_file,
     {
@@ -150,9 +157,7 @@ update_csv_conf(
         if getattr(args, name) is not None
     },
 )
-conflict_period = csv_config_to_dict(conflict_period_file)
 simsetting = csv_config_to_dict(simsetting_file)
-ndays = int(conflict_period.get("Length"))
 
 print("Running the Flee agent based model")
 print(f"Running P-FLEE with cores = {cores}")
