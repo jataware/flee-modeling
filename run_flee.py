@@ -115,8 +115,8 @@ args = arg_parser.parse_args()
 print(args)
 
 rundir = "./run/"
-if os.path.exists(rundir):
-    shutil.rmtree(rundir)
+if not os.path.exists(rundir):
+    os.mkdir(rundir)
 
 scenario = args.scenario
 cores = str(args.cores)
@@ -251,5 +251,9 @@ out_df[other_cols].to_csv(rundir + "output/global_data.csv", index=False)
 
 for filename in os.listdir("."):
     if "agents.out" in filename:
-        shutil.move(filename, os.path.join(rundir, "output"))
+        output_file_path = os.path.join(rundir, "output", filename)
+        # Remove the file if already exists (perhaps from an earlier run)
+        if os.path.exists(output_file_path):
+            os.remove(output_file_path)
+        shutil.move(filename, output_file_path)
 
