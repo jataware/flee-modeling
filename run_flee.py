@@ -4,8 +4,8 @@
 import argparse
 import csv
 import os
-
 import pandas as pd
+import shutil
 import subprocess
 
 
@@ -25,10 +25,11 @@ def csv_config_to_dict(dict_file_path: str) -> dict:
     result = dict(reader)
     return result
 
+scenario_dir = './scenarios'
 
 # Get list of defined scenarios
 scenarios = [
-    entry.name for entry in os.scandir(path="./Flee_scenarios")
+    entry.name for entry in os.scandir(path=scenario_dir)
     if entry.is_dir() and not entry.name.startswith('.')
 ]
 
@@ -104,9 +105,13 @@ if not os.path.isdir(rundir):
 scenario = args.scenario
 cores = str(args.cores)
 
-dir_data = os.path.join('./Flee_scenarios', scenario)
-conflict_period_file = os.path.join(dir_data, "input_csv", "conflict_period.csv")
-simsetting_file = os.path.join(dir_data, "simsetting.csv")
+base_dir_data_path = os.path.join(scenario_dir, scenario)
+run_dir_data_path = os.path.join(rundir, scenario)
+if os.path.exists(run_dir_data_path):
+    shutil.rmtree(run_dir_data_path)
+shutil.copytree(base_dir_data_path, run_dir_data_path)
+conflict_period_file = os.path.join(run_dir_data_path, "input_csv", "conflict_period.csv")
+simsetting_file = os.path.join(run_dir_data_path, "simsetting.csv")
 
 
 # Update config files for use in Flee and pull configuration to a dictionary for use in this script
@@ -126,12 +131,12 @@ print(f"Running P-FLEE with cores = {cores}")
 
 # Run the Flee ABM
 amb_cmd = (
-        f"mpirun -np {cores} python3 run_par.py {os.path.join(dir_data, 'input_csv')} "
-        f"{os.path.join(dir_data, 'source_data')} {ndays} {os.path.join(dir_data, 'simsetting.csv')}"
+        f"mpirun -np {cores} python3 run_par.py {os.path.join(run_dir_data_path, 'input_csv')} "
+        f"{os.path.join(run_dir_data_path, 'source_data')} {ndays} {os.path.join(run_dir_data_path, 'simsetting.csv')}"
 )
 
 print(amb_cmd)
-with open(f"{rundir}out.csv", "wb") as outfile:
+with open(os.path.join(rundir, 'out.csv'), "wb") as outfile:
     subprocess.run(amb_cmd, stdout=outfile, shell=True)
 
 # specify directories
@@ -188,7 +193,7 @@ for camp in camps:
     count += 1
 
 # Add latitude and longitude of camps to output data
-locations_file = os.path.join(dir_data, 'input_csv/locations.csv')
+locations_file = os.path.join(run_dir_data_path, 'input_csv/locations.csv')
 locations_df = pd.read_csv(locations_file, index_col=0)
 
 # declare an empty list to store
