@@ -3,6 +3,7 @@
 .DS_Store
 .idea
 
+run
 output
 out.csv
 outdate.csv
