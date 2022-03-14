@@ -3,6 +3,8 @@
 .DS_Store
 .idea
 
+__pycache__
+
 run
 output
 out.csv

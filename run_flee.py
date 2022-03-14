@@ -33,227 +33,248 @@ def csv_config_to_dict(dict_file_path: str) -> dict:
     return result
 
 
-# Get list of defined scenarios
-scenario_dir = "./scenarios"
-scenarios = [
-    entry.name
-    for entry in os.scandir(path=scenario_dir)
-    if entry.is_dir() and not entry.name.startswith(".")
-]
-
 # Pandas config
 pd.options.mode.chained_assignment = None
 
-
-description = """
-This tool helps run the flee models for the provided scenarios.
-"""
-
-arg_parser = argparse.ArgumentParser(
-    description=description, formatter_class=argparse.RawDescriptionHelpFormatter
-)
-
-arg_parser.add_argument(
-    "scenario",
-    type=str,
-    choices=scenarios,
-    help="Predefined scenario to run",
-)
-arg_parser.add_argument(
-    "--cores",
-    type=int,
-    help="Number of cores to use when running.",
-    default=2,
-)
-arg_parser.add_argument(
-    "--ndays",
-    type=int,
-    help="Number of days to simulate.",
-    default=None,
-)
-arg_parser.add_argument(
-    "--MaxMoveSpeed",
-    type=int,
-    help="",
-    default=None,
-)
-arg_parser.add_argument(
-    "--CampMoveChance",
-    type=float,
-    help="Chance for a camp to move. (0-1)",
-    default=None,
-)
-arg_parser.add_argument(
-    "--ConflictMoveChance",
-    type=float,
-    help="",
-    default=None,
-)
-arg_parser.add_argument(
-    "--DefaultMoveChance",
-    type=float,
-    help="",
-    default=None,
-)
-arg_parser.add_argument(
-    "--MaxWalkSpeed",
-    type=int,
-    help="",
-    default=None,
-)
-arg_parser.add_argument(
-    "--AgentLogs",
-    action="store_const",
-    const=1,
-    help="",
-    default=None,
-    dest="AgentLogLevel",
-)
+scenario_dir = "./scenarios"
 
 
-args = arg_parser.parse_args()
-print(args)
+def main(args):
+    rundir = args.run_dir
+    if not os.path.exists(rundir):
+        os.mkdir(rundir)
 
-rundir = "./run/"
-if not os.path.exists(rundir):
-    os.mkdir(rundir)
+    scenario = args.scenario
+    cores = str(args.cores)
 
-scenario = args.scenario
-cores = str(args.cores)
-
-base_dir_data_path = os.path.join(scenario_dir, scenario)
-run_dir_data_path = os.path.join(rundir, scenario)
-if os.path.exists(run_dir_data_path):
-    shutil.rmtree(run_dir_data_path)
-shutil.copytree(base_dir_data_path, run_dir_data_path)
-conflict_period_file = os.path.join(
-    run_dir_data_path, "input_csv", "conflict_period.csv"
-)
-simsetting_file = os.path.join(run_dir_data_path, "simsetting.csv")
+    base_dir_data_path = os.path.join(scenario_dir, scenario)
+    run_dir_data_path = os.path.join(rundir, scenario)
+    if os.path.exists(run_dir_data_path):
+        shutil.rmtree(run_dir_data_path)
+    shutil.copytree(base_dir_data_path, run_dir_data_path)
+    conflict_period_file = os.path.join(
+        run_dir_data_path, "input_csv", "conflict_period.csv"
+    )
+    simsetting_file = os.path.join(run_dir_data_path, "simsetting.csv")
 
 
-# Update config files for use in Flee and pull configuration to a dictionary for use in this script
-# Since conflicts cannot extend beyond the scenario, we clamp the number of days to be no more than
-# the scenario default
-conflict_period = csv_config_to_dict(conflict_period_file)
-if args.ndays is not None and args.ndays <= int(conflict_period.get("Length", args.ndays)):
-    ndays = args.ndays
-    conflict_period["Length"] = ndays
-    update_csv_conf(conflict_period_file, {"Length": ndays})
-else:
-    ndays = int(conflict_period.get("Length"))
-update_csv_conf(
-    simsetting_file,
-    {
-        name: getattr(args, name)
-        for name in (
-            "CampMoveChance",
-            "ConflictMoveChance",
-            "DefaultMoveChance",
-            "MaxMoveSpeed",
-            "MaxWalkSpeed",
-            "AgentLogLevel",
-        )
-        if getattr(args, name) is not None
-    },
-)
-simsetting = csv_config_to_dict(simsetting_file)
-
-print("Running the Flee agent based model")
-print(f"Running P-FLEE with cores = {cores}")
-
-# Run the Flee ABM
-amb_cmd = (
-    f"mpirun -np {cores} python3 run_par.py {os.path.join(run_dir_data_path, 'input_csv')} "
-    f"{os.path.join(run_dir_data_path, 'source_data')} {ndays} {os.path.join(run_dir_data_path, 'simsetting.csv')}"
-)
-
-print(amb_cmd)
-with open(os.path.join(rundir, "out.csv"), "wb") as outfile:
-    subprocess.run(amb_cmd, stdout=outfile, shell=True)
-
-# specify directories
-if not os.path.isdir(rundir + "output"):
-    os.mkdir(rundir + "output")
-if not os.path.isdir(rundir + "media"):
-    os.mkdir(rundir + "media")
-
-csv_file = rundir + "out.csv"
-
-datelist = pd.date_range(
-    start=conflict_period.get("StartDate"), periods=ndays, freq="D"
-)
-
-with open(csv_file, "r") as my_input_file:
-    out_df = pd.read_csv(my_input_file)
-    print(out_df)
-    out_df.insert(1, "Date", datelist, True)
-
-out_df.to_csv(rundir + "outdate.csv", index=False)
-
-# Restructure output data
-features = [
-    i
-    for i in out_df.columns
-    if ("sim" in i or "error" in i or "data" in i)
-    and ("total" not in i.lower() and "refugees" not in i)
-]
-
-camps = set([i.split(" ")[0] for i in features])
-
-count = 0
-for camp in camps:
-    cols = ["Date"]
-    camp_feats = [i for i in features if camp in i]
-    # camp_feats = [i for i in features if camp == i.split('_')[0]]
-    cols.extend(camp_feats)
-    df_ = out_df[cols]
-    df_["camp"] = camp
-    for cf in camp_feats:
-        df_.rename(columns={cf: cf.split(" ")[1]}, inplace=True)
-    df_.set_index("Date", inplace=True)
-    df_ = df_.groupby([lambda x: x.year, lambda x: x.month]).sum()
-    df_.reset_index(level=0, inplace=True)
-    df_.rename(columns={"Date": "Year"}, inplace=True)
-    df_.reset_index(level=0, inplace=True)
-    df_.rename(columns={"Date": "Month"}, inplace=True)
-    df_["camp"] = camp
-    if count == 0:
-        combined = df_
+    # Update config files for use in Flee and pull configuration to a dictionary for use in this script
+    # Since conflicts cannot extend beyond the scenario, we clamp the number of days to be no more than
+    # the scenario default
+    conflict_period = csv_config_to_dict(conflict_period_file)
+    if args.ndays is not None and args.ndays <= int(conflict_period.get("Length", args.ndays)):
+        ndays = args.ndays
+        conflict_period["Length"] = ndays
+        update_csv_conf(conflict_period_file, {"Length": ndays})
     else:
-        combined = combined.append(df_)
-    count += 1
+        ndays = int(conflict_period.get("Length"))
+    update_csv_conf(
+        simsetting_file,
+        {
+            name: getattr(args, name)
+            for name in (
+                "CampMoveChance",
+                "ConflictMoveChance",
+                "DefaultMoveChance",
+                "MaxMoveSpeed",
+                "MaxWalkSpeed",
+                "AgentLogLevel",
+            )
+            if getattr(args, name) is not None
+        },
+    )
+    simsetting = csv_config_to_dict(simsetting_file)
 
-# Add latitude and longitude of camps to output data
-locations_file = os.path.join(run_dir_data_path, "input_csv/locations.csv")
-locations_df = pd.read_csv(locations_file, index_col=0)
+    print("Running the Flee agent based model")
+    print(f"Running P-FLEE with cores = {cores}")
 
-# declare an empty list to store
-# latitude and longitude of values
-longitude = []
-latitude = []
+    # Run the Flee ABM
+    amb_cmd = (
+        f"mpirun -np {cores} python3 run_par.py {os.path.join(run_dir_data_path, 'input_csv')} "
+        f"{os.path.join(run_dir_data_path, 'source_data')} {ndays} {os.path.join(run_dir_data_path, 'simsetting.csv')}"
+    )
 
-print(locations_df)
-for i in combined["camp"]:
-    latitude.append(locations_df.loc[i, "latitude"])
-    longitude.append(locations_df.loc[i, "longitude"])
+    print(amb_cmd)
+    with open(os.path.join(rundir, "out.csv"), "wb") as outfile:
+        subprocess.run(amb_cmd, stdout=outfile, shell=True)
 
-# now add this column to dataframe
-combined["Longitude"] = longitude
-combined["Latitude"] = latitude
+    # specify directories
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+    if not os.path.isdir(args.media_dir):
+        os.mkdir(args.media_dir)
 
-# Save output to files: one for camp values, one for totals (i.e. global)
-combined.to_csv(rundir + "output/camp_data.csv", index=False)
+    csv_file = os.path.join(rundir, "out.csv")
 
-other_cols = set(out_df.columns) - set(features)
+    datelist = pd.date_range(
+        start=conflict_period.get("StartDate"), periods=ndays, freq="D"
+    )
 
-out_df[other_cols].to_csv(rundir + "output/global_data.csv", index=False)
+    with open(csv_file, "r") as my_input_file:
+        out_df = pd.read_csv(my_input_file)
+        print(out_df)
+        out_df.insert(1, "Date", datelist, True)
 
-for filename in os.listdir("."):
-    if "agents.out" in filename:
-        output_file_path = os.path.join(rundir, "output", filename)
-        # Remove the file if already exists (perhaps from an earlier run)
-        if os.path.exists(output_file_path):
-            os.remove(output_file_path)
-        shutil.move(filename, output_file_path)
+    out_df.to_csv(os.path.join(rundir, "outdate.csv"), index=False)
+
+    # Restructure output data
+    features = [
+        i
+        for i in out_df.columns
+        if ("sim" in i or "error" in i or "data" in i)
+        and ("total" not in i.lower() and "refugees" not in i)
+    ]
+
+    camps = set([i.split(" ")[0] for i in features])
+
+    count = 0
+    for camp in camps:
+        cols = ["Date"]
+        camp_feats = [i for i in features if camp in i]
+        # camp_feats = [i for i in features if camp == i.split('_')[0]]
+        cols.extend(camp_feats)
+        df_ = out_df[cols]
+        df_["camp"] = camp
+        for cf in camp_feats:
+            df_.rename(columns={cf: cf.split(" ")[1]}, inplace=True)
+        df_.set_index("Date", inplace=True)
+        df_ = df_.groupby([lambda x: x.year, lambda x: x.month]).sum()
+        df_.reset_index(level=0, inplace=True)
+        df_.rename(columns={"Date": "Year"}, inplace=True)
+        df_.reset_index(level=0, inplace=True)
+        df_.rename(columns={"Date": "Month"}, inplace=True)
+        df_["camp"] = camp
+        if count == 0:
+            combined = df_
+        else:
+            combined = combined.append(df_)
+        count += 1
+
+    # Add latitude and longitude of camps to output data
+    locations_file = os.path.join(run_dir_data_path, "input_csv/locations.csv")
+    locations_df = pd.read_csv(locations_file, index_col=0)
+
+    # declare an empty list to store
+    # latitude and longitude of values
+    longitude = []
+    latitude = []
+
+    print(locations_df)
+    for i in combined["camp"]:
+        latitude.append(locations_df.loc[i, "latitude"])
+        longitude.append(locations_df.loc[i, "longitude"])
+
+    # now add this column to dataframe
+    combined["Longitude"] = longitude
+    combined["Latitude"] = latitude
+
+    # Save output to files: one for camp values, one for totals (i.e. global)
+    combined.to_csv(os.path.join(args.output_dir, "camp_data.csv"), index=False)
+
+    other_cols = set(out_df.columns) - set(features)
+
+    out_df[other_cols].to_csv(os.path.join(args.output_dir, "global_data.csv"), index=False)
+
+    for filename in os.listdir("."):
+        if "agents.out" in filename:
+            output_file_path = os.path.join(args.output_dir, filename)
+            # Remove the file if already exists (perhaps from an earlier run)
+            if os.path.exists(output_file_path):
+                os.remove(output_file_path)
+            shutil.move(filename, output_file_path)
+
+
+if __name__ == "__main__":
+    # Get list of defined scenarios
+    scenarios = [
+        entry.name
+        for entry in os.scandir(path=scenario_dir)
+        if entry.is_dir() and not entry.name.startswith(".")
+    ]
+
+
+    description = """
+    This tool helps run the flee models for the provided scenarios.
+    """
+
+    arg_parser = argparse.ArgumentParser(
+        description=description, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+
+    arg_parser.add_argument(
+        "scenario",
+        type=str,
+        choices=scenarios,
+        help="Predefined scenario to run",
+    )
+    arg_parser.add_argument(
+        "--cores",
+        type=int,
+        help="Number of cores to use when running.",
+        default=2,
+    )
+    arg_parser.add_argument(
+        "--ndays",
+        type=int,
+        help="Number of days to simulate.",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--MaxMoveSpeed",
+        type=int,
+        help="",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--CampMoveChance",
+        type=float,
+        help="Chance for a camp to move. (0-1)",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--ConflictMoveChance",
+        type=float,
+        help="",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--DefaultMoveChance",
+        type=float,
+        help="",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--MaxWalkSpeed",
+        type=int,
+        help="",
+        default=None,
+    )
+    arg_parser.add_argument(
+        "--AgentLogs",
+        action="store_const",
+        const=1,
+        help="",
+        default=None,
+        dest="AgentLogLevel",
+    )
+    arg_parser.add_argument(
+        "--run-dir",
+        action="store",
+        help="",
+        default="./run/",
+    )
+    arg_parser.add_argument(
+        "--output-dir",
+        action="store",
+        help="",
+        default="./run/output",
+    )
+    arg_parser.add_argument(
+        "--media-dir",
+        action="store",
+        help="",
+        default="./run/media",
+    )
+    args = arg_parser.parse_args()
+    main(args)
 
