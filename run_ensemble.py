@@ -22,6 +22,14 @@ def main(args):
     media_dirs = []
     concurrency = args.concurrency
     run_count = args.runs
+
+    if not os.path.exists(args.run_dir):
+        os.mkdir(args.run_dir)
+    if not os.path.isdir(args.output_dir):
+        os.mkdir(args.output_dir)
+    if not os.path.isdir(args.media_dir):
+        os.mkdir(args.media_dir)
+
     # Create a list of arguments to pass in to the run_flee.py command, overwriting as needed
     for i in range(run_count):
         run_args = copy.copy(args)

@@ -173,7 +173,7 @@ def main(args):
 
     other_cols = set(out_df.columns) - set(features)
 
-    out_df[other_cols].to_csv( "global_data.csv", index=False)
+    out_df[other_cols].to_csv(os.path.join(args.output_dir, "global_data.csv"), index=False)
 
     for filename in os.listdir("."):
         if "agents.out" in filename:
