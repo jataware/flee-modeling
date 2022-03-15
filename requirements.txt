@@ -33,3 +33,8 @@ tomli==2.0.1
 typing_extensions==4.1.1
 yatiml==0.8.0
 ymmsl==0.11.0
+
+# From Flare
+seaborn
+tqdm
+sklearn
