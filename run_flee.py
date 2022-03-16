@@ -3,6 +3,7 @@
 
 import argparse
 import csv
+import math
 import os
 import pandas as pd
 import shutil
@@ -91,7 +92,7 @@ def main(args):
     simsetting = csv_config_to_dict(simsetting_file)
 
     if args.flare:
-        window_size = max(1, ndays // 20)
+        window_size = math.gcd(ndays, ndays // 20)
         simulate(
             scenario_name=scenario,
             scenario_path=run_dir_data_path,
