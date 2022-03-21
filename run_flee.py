@@ -167,6 +167,8 @@ def main(args):
             combined = combined.append(df_)
         count += 1
 
+    combined = combined.sort_values(by="Date", ascending=True)
+
     # Add latitude and longitude of camps to output data
     locations_file = os.path.join(run_dir_data_path, "input_csv/locations.csv")
     locations_df = pd.read_csv(locations_file, index_col=0)
