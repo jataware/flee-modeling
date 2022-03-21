@@ -160,12 +160,6 @@ def main(args):
         df_["camp"] = camp
         for cf in camp_feats:
             df_.rename(columns={cf: cf.split(" ")[1]}, inplace=True)
-        df_.set_index("Date", inplace=True)
-        df_ = df_.groupby([lambda x: x.year, lambda x: x.month]).sum()
-        df_.reset_index(level=0, inplace=True)
-        df_.rename(columns={"Date": "Year"}, inplace=True)
-        df_.reset_index(level=0, inplace=True)
-        df_.rename(columns={"Date": "Month"}, inplace=True)
         df_["camp"] = camp
         if count == 0:
             combined = df_
