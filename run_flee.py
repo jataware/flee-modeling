@@ -39,17 +39,18 @@ def csv_config_to_dict(dict_file_path: str) -> dict:
 # Pandas config
 pd.options.mode.chained_assignment = None
 
-scenario_dir = "./scenarios"
+scenario_dir = os.path.abspath("./scenarios")
 
 
 def main(args):
-    rundir = args.run_dir
+    rundir = os.path.abspath(args.run_dir)
     if not os.path.exists(rundir):
         os.mkdir(rundir)
 
     scenario = args.scenario
     cores = str(args.cores)
 
+    curr_dir_path = os.path.abspath('.')
     base_dir_data_path = os.path.join(scenario_dir, scenario)
     run_dir_data_path = os.path.join(rundir, scenario)
     if os.path.exists(run_dir_data_path):
@@ -107,19 +108,19 @@ def main(args):
     # Run the Flee ABM
     if int(cores) <= 1:
         amb_cmd = (
-            f"python3 run_par.py {os.path.join(run_dir_data_path, 'input_csv')} "
+            f"python3 {os.path.join(curr_dir_path, 'run_par.py')} {os.path.join(run_dir_data_path, 'input_csv')} "
             f"{os.path.join(run_dir_data_path, 'source_data')} {ndays} {os.path.join(run_dir_data_path, 'simsetting.csv')}"
         )
     else:
         amb_cmd = (
-            f"mpirun -np {cores} python3 run_par.py {os.path.join(run_dir_data_path, 'input_csv')} "
+            f"mpirun -np {cores} python3 {os.path.join(curr_dir_path, 'run_par.py')} {os.path.join(run_dir_data_path, 'input_csv')} "
             f"{os.path.join(run_dir_data_path, 'source_data')} {ndays} {os.path.join(run_dir_data_path, 'simsetting.csv')}"
         )
 
 
     print(amb_cmd)
     with open(os.path.join(rundir, "out.csv"), "wb") as outfile:
-        subprocess.run(amb_cmd, stdout=outfile, shell=True)
+        subprocess.run(amb_cmd, cwd=rundir, stdout=outfile, shell=True)
 
     # specify directories
     if not os.path.isdir(args.output_dir):
