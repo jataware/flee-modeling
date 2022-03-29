@@ -64,6 +64,7 @@ def main(args):
         median=lambda agg: np.round(agg["median"], 2),
         mean=lambda agg: np.round(agg["mean"], 2),
     ).drop(columns=["index"])
+    final_df["error"][np.isinf(final_df["error"])] = np.NAN
 
     # Export aggregated ensemble data to single camp_data.csv
     final_df.to_csv(os.path.join(args.output_dir, "camp_data.csv"), index=False)
@@ -191,7 +192,7 @@ if __name__ == "__main__":
         "--movie",
         action="store_true",
         help="Generate Flee movie",
-    )    
+    )
 
     args = arg_parser.parse_args()
     main(args)
